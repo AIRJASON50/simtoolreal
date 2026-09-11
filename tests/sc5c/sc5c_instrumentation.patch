@@ -1,0 +1,214 @@
+SC5c instrumentation patch for rl_games/rl_games/common/a2c_common.py
+======================================================================
+This patch adds ONLY diagnostics (no algorithm change). It closes the SC5c
+false-pass holes by logging, every epoch, the quantities the verdict script
+cross-checks:
+
+  gpu_level/active          float(self.gpu_level_sapg)              -- mechanism engaged?
+  gpu_level/gather_calls    1.0 each epoch the gather branch ran    -- gather actually fired?
+  gpu_level/num_blocks      self.num_actors//self.intr_coef_block_size in GLOBAL context
+                                                                    -- == world_size, not 1 (no-op guard)
+  perf/curr_frames          self.curr_frames * world_size           -- env-steps/epoch match precondition
+  perf/num_minibatches      len(self.dataset)                       -- SGD work context for the FPS ratio
+  perf/local_dataset_len    trained transitions on THIS rank        -- shard-size honesty (bound trained data)
+  auxiliary_stats/off_policy_frac  fraction of off_policy_mask True -- followers relabelled (lf) engaged?
+
+Peak memory is written to plain files at run end (max over the steady window),
+BOTH allocated AND reserved, from the SAME torch API on cuda:local_rank:
+
+  mem_<expname>_rank<R>.json  -> {"allocated": .., "reserved": .., "transient_allocated": ..}
+
+`transient_allocated` is the peak *bracketed around the gather->shard window*
+(reset at _gather_rollout entry, read just before _shard_batch) so the gpu-level
+transient (the ws*local global batch + augment cat) is measured directly, not
+inferred from the epoch-wide peak that other allocations may dominate.
+
+The patch is idempotent-ish: all additions are guarded and byte-identical when
+gpu_level_sapg is False EXCEPT for the extra scalar writes (rank-0 only) and the
+mem file at exit -- these do not touch the RNG or the optimiser, so the A/B is fair.
+
+Apply on the cluster dev pod from repo root:
+    git apply tests/sc5c/sc5c_instrumentation.patch
+Revert:
+    git apply -R tests/sc5c/sc5c_instrumentation.patch
+
+If you prefer NOT to patch source, run_sc5c.sh has an nvidia-smi sampler fallback
+for memory (coarser, process-RSS-on-GPU) and the verdict script will detect the
+absence of mem_*.json and fall back -- but then the correctness-coupled scalars
+(gpu_level/*, perf/*) are UNAVAILABLE and SC5c MUST be reported INCONCLUSIVE, not
+PASS, because the no-op / broken-impl holes cannot be closed without them.
+
+----------------------------------------------------------------------
+UNIFIED DIFF (context anchors are exact lines from HEAD 313d5aea)
+----------------------------------------------------------------------
+
+--- a/rl_games/rl_games/common/a2c_common.py
++++ b/rl_games/rl_games/common/a2c_common.py
+@@ _gather_rollout: bracket the transient-memory window at gather entry
+     def _gather_rollout(self, batch_dict, extras):
+         ...docstring...
+         assert not self.is_rnn, "gpu_level_sapg does not support RNN policies yet (rnn_states gather unhandled)"
++        # SC5c: reset peak so the transient (gathered ws*local batch + augment cat) is measured
++        if getattr(self, '_sc5c_measure', False):
++            import torch as _t
++            _t.cuda.reset_peak_memory_stats(self.local_rank)
+         ws = self.world_size
+         ...
+
+NOTE ON WIRING: rather than editing _gather_rollout/_shard_batch inline (which
+would scatter the diagnostics), apply the single consolidated block below into
+ContinuousA2CBase.train_epoch and ContinuousA2CBase.train. This keeps the whole
+patch in two hunks and off the numerical path.
+
+======================================================================
+HUNK 1  -- ContinuousA2CBase.train_epoch, gpu_level branch (around line 1496)
+======================================================================
+Locate:
+            if self.gpu_level_sapg:
+                # each rank rolled out its own exploration block; gather them into one global
+                # batch and switch to the world_size-block view for aggregation + optimisation
+                self._enter_global_sapg_context()
+                orig_batch_dict, ps_extras = self._gather_rollout(orig_batch_dict, ps_extras)
+
+Replace with:
+            if self.gpu_level_sapg:
+                # each rank rolled out its own exploration block; gather them into one global
+                # batch and switch to the world_size-block view for aggregation + optimisation
+                self._enter_global_sapg_context()
+                if getattr(self, '_sc5c_measure', False):
+                    torch.cuda.reset_peak_memory_stats(self.local_rank)   # SC5c: bracket transient
+                orig_batch_dict, ps_extras = self._gather_rollout(orig_batch_dict, ps_extras)
+                self._sc5c_gather_fired = True
+                self._sc5c_num_blocks = self.num_actors // self.intr_coef_block_size
+
+Locate (a few lines down):
+            if self.expl_type.startswith('mixed_expl') and self.use_others_experience != 'none':
+                batch_dict = self.augment_batch_for_mixed_expl(orig_batch_dict, ps_extras)
+                if self.gpu_level_sapg:
+                    # keep only this rank's disjoint shard of the global aggregated dataset;
+                    # grad all-reduce then averages shards into the exact global-dataset gradient
+                    batch_dict = self._shard_batch(batch_dict)
+
+Replace with:
+            if self.expl_type.startswith('mixed_expl') and self.use_others_experience != 'none':
+                batch_dict = self.augment_batch_for_mixed_expl(orig_batch_dict, ps_extras)
+                if self.gpu_level_sapg:
+                    if getattr(self, '_sc5c_measure', False):
+                        # SC5c: transient peak is the pre-shard global batch just before we trim it
+                        self._sc5c_transient = max(getattr(self, '_sc5c_transient', 0),
+                                                   torch.cuda.max_memory_allocated(self.local_rank))
+                    # keep only this rank's disjoint shard of the global aggregated dataset;
+                    # grad all-reduce then averages shards into the exact global-dataset gradient
+                    batch_dict = self._shard_batch(batch_dict)
+
+======================================================================
+HUNK 2  -- ContinuousA2CBase.train_epoch, just before the final `return`
+          (after the `if self.gpu_level_sapg: self._exit_global_sapg_context()` block,
+           around line 1595-1599). Record per-epoch diagnostics + off-policy fraction.
+======================================================================
+Locate:
+        if self.gpu_level_sapg:
+            # restore the local (rollout) view before the next epoch's play_steps
+            self._exit_global_sapg_context()
+
+        return batch_dict['step_time'], play_time, update_time, total_time, a_losses, c_losses, b_losses, entropies, kls, last_lr, lr_mul, extra_infos
+
+Replace with:
+        # SC5c diagnostics (rank-0 writer only). These are load-bearing for the verdict:
+        # they distinguish an active/correct mechanism from an off/no-op one so the FPS/mem
+        # ratios cannot be trivially passed by a broken-but-cheaper arm.
+        self._sc5c_local_dataset_len = int(len(self.dataset) * self.minibatch_size)
+        self._sc5c_num_minibatches = int(len(self.dataset))
+        if 'off_policy_mask' in batch_dict and batch_dict['off_policy_mask'] is not None:
+            self._sc5c_off_policy_frac = float(batch_dict['off_policy_mask'].float().mean().item())
+        else:
+            self._sc5c_off_policy_frac = 0.0
+
+        if self.gpu_level_sapg:
+            # restore the local (rollout) view before the next epoch's play_steps
+            self._exit_global_sapg_context()
+
+        return batch_dict['step_time'], play_time, update_time, total_time, a_losses, c_losses, b_losses, entropies, kls, last_lr, lr_mul, extra_infos
+
+======================================================================
+HUNK 3  -- ContinuousA2CBase.train, init (just before `while True:` at ~line 1689)
+======================================================================
+Locate:
+        # for _ in range(0):
+        #     self.play_steps()
+        # print("Warmup done")
+
+        while True:
+
+Replace with:
+        # for _ in range(0):
+        #     self.play_steps()
+        # print("Warmup done")
+
+        # SC5c measurement state (opt-in via env SC5C_MEASURE=1). Warmup epochs are
+        # discarded; peak-memory stats are reset at the start of the steady window.
+        self._sc5c_measure = bool(int(os.getenv('SC5C_MEASURE', '0')))
+        self._sc5c_warm_epochs = int(os.getenv('SC5C_WARMUP', '40'))
+        self._sc5c_seen = 0
+        self._sc5c_transient = 0
+        self._sc5c_gather_fired = False
+        self._sc5c_num_blocks = self.num_actors // self.intr_coef_block_size if hasattr(self, 'intr_coef_block_size') else 1
+        if self._sc5c_measure and self.multi_gpu:
+            torch.cuda.reset_peak_memory_stats(self.local_rank)
+
+        while True:
+
+======================================================================
+HUNK 4  -- ContinuousA2CBase.train, per-epoch write block. Insert INSIDE the
+          `if self.global_rank == 0:` scalar-writing region (after write_stats,
+           near line 1715) the correctness-coupled scalars; and at loop end
+           (all ranks) update the steady window + dump mem at max_epochs.
+======================================================================
+Locate (rank-0 region, right after the write_stats(...) call ~line 1713-1715):
+                self.write_stats(total_time, epoch_num, step_time, play_time, update_time,
+                                a_losses, c_losses, entropies, kls, last_lr, lr_mul, frame,
+                                scaled_time, scaled_play_time, curr_frames)
+
+Insert immediately after it:
+                # SC5c: correctness-coupled diagnostics on the rank-0 writer.
+                self.writer.add_scalar('gpu_level/active', float(self.gpu_level_sapg), frame)
+                self.writer.add_scalar('gpu_level/gather_calls', float(getattr(self, '_sc5c_gather_fired', False)), frame)
+                self.writer.add_scalar('gpu_level/num_blocks', float(getattr(self, '_sc5c_num_blocks', 1)), frame)
+                self.writer.add_scalar('perf/curr_frames', float(curr_frames), frame)
+                self.writer.add_scalar('perf/num_minibatches', float(getattr(self, '_sc5c_num_minibatches', 0)), frame)
+                self.writer.add_scalar('perf/local_dataset_len', float(getattr(self, '_sc5c_local_dataset_len', 0)), frame)
+                self.writer.add_scalar('auxiliary_stats/off_policy_frac', float(getattr(self, '_sc5c_off_policy_frac', 0.0)), frame)
+                self._sc5c_gather_fired = False  # reset per epoch so a stalled gather shows as 0
+
+Locate the very END of the while loop (after the two `if should_exit: return ...`
+blocks and the trailing comment `# print("Epoch done")`, ~line 1829-1835).
+Insert BEFORE `if should_exit: return self.last_mean_rewards, epoch_num` on ALL ranks
+the steady-window reset + final dump:
+
+            # SC5c: per-rank steady window + peak-memory dump (all ranks, incl. non-writer).
+            if self._sc5c_measure and self.multi_gpu:
+                self._sc5c_seen += 1
+                if self._sc5c_seen == self._sc5c_warm_epochs:
+                    torch.cuda.reset_peak_memory_stats(self.local_rank)  # start steady window
+                    self._sc5c_transient = 0
+                if self.max_epochs != -1 and epoch_num >= self.max_epochs - 1:
+                    import json as _json
+                    expname = self.experiment_name.split('_', 1)[1] if '_' in self.experiment_name else self.experiment_name
+                    payload = {
+                        'allocated': int(torch.cuda.max_memory_allocated(self.local_rank)),
+                        'reserved': int(torch.cuda.max_memory_reserved(self.local_rank)),
+                        'transient_allocated': int(getattr(self, '_sc5c_transient', 0)),
+                        'local_rank': int(self.local_rank),
+                        'global_rank': int(self.global_rank),
+                    }
+                    with open(f"mem_{expname}_rank{self.global_rank}.json", 'w') as _f:
+                        _json.dump(payload, _f)
+
+----------------------------------------------------------------------
+Why experiment_name.split('_', 1)[1] and not [2:] or [3:]:
+  - the CLI passes name=${RANK}_<base>. For rank>=10 the prefix is 3 chars, so a
+    fixed [2:] would corrupt the filename. split('_',1)[1] strips exactly the
+    "<rank>_" prefix for any rank width. (The rendezvous uses experiment_name[3:]
+    at a2c_common:109 which ALSO breaks for single-digit ranks vs multi-digit but
+    that is a pre-existing hash-seed quirk; we do NOT touch it -- our mem filename
+    just needs to be stable per arm, and the verdict maps arm->rank explicitly.)
