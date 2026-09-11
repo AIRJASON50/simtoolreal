@@ -228,7 +228,8 @@ class CentralValueTrain(nn.Module):
                 loss += self.train_critic(self.dataset[idx])
             if self.normalize_input:
                 self.model.running_mean_std.eval()  # don't need to update statstics more than one miniepoch
-        avg_loss = loss / (self.mini_epoch * self.num_minibatches)
+        num_mb = max(len(self.dataset), 1)   # config-time num_minibatches mismatches after gpu-level resize
+        avg_loss = loss / (self.mini_epoch * num_mb)
 
         self.epoch_num += 1
         self.lr, _ = self.scheduler.update(self.lr, 0, self.epoch_num, 0, 0)

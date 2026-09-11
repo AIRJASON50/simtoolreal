@@ -9,7 +9,7 @@ from rl_games.algos_torch.moving_mean_std import GeneralizedMovingStats
 from rl_games.algos_torch.self_play_manager import SelfPlayManager
 from rl_games.algos_torch import torch_ext
 from rl_games.common import schedulers
-from rl_games.common.custom_utils import create_sinusoidal_encoding, filter_leader, shuffle_batch, swap_and_flatten01
+from rl_games.common.custom_utils import all_gather_cat, create_sinusoidal_encoding, filter_leader, shuffle_batch, swap_and_flatten01
 from rl_games.common.experience import ExperienceBuffer
 from rl_games.common.interval_summary_writer import IntervalSummaryWriter
 from rl_games.common.diagnostics import DefaultDiagnostics, PpoDiagnostics
@@ -321,11 +321,20 @@ class A2CBase(BaseAlgorithm):
         assert not self.has_soft_aug
         
         self.use_others_experience = config.get('use_others_experience')
-        
+
+        # GPU-level SAPG: promote the SAPG block structure from intra-process env slices to the
+        # rank level (one exploration block per GPU). Only active under multi_gpu; a single process
+        # falls back to the standard block path so non-DDP behaviour stays byte-identical to upstream.
+        self.gpu_level_sapg = config.get('gpu_level_sapg', False) and self.multi_gpu
+
         self.expl_type = config.get('expl_type', 'none')
 
         if self.expl_type != 'none':
-            if self.expl_type.startswith('mixed_expl'):
+            if not self.expl_type.startswith('mixed_expl'):
+                raise NotImplementedError
+            if self.gpu_level_sapg:
+                self._setup_gpu_level_sapg(config)
+            else:
                 self.intr_coef_block_size = config.get('expl_coef_block_size')
                 assert self.num_actors % self.intr_coef_block_size == 0
                 env_ids = torch.arange(self.num_actors // self.intr_coef_block_size).repeat_interleave(self.intr_coef_block_size).to(self.ppo_device)
@@ -334,28 +343,186 @@ class A2CBase(BaseAlgorithm):
                     self.intr_reward_coef_embd = embedding_genvec.reshape(-1,1)
                 else:
                     self.intr_reward_coef_embd = create_sinusoidal_encoding(embedding_genvec, config.get('expl_reward_coef_embd_size', 32), n=100).to(self.ppo_device)
-            else:
-                raise NotImplementedError
-            expl_reward_type = config.get('expl_reward_type')
-            if expl_reward_type == 'entropy':
-                self.intr_reward_coef = torch.linspace(0.5, 0.0, self.num_actors // self.intr_coef_block_size).to(self.ppo_device)[env_ids] * config.get('expl_reward_coef_scale')
-                self.intr_reward_model = None
-            elif expl_reward_type == 'none':
-                self.intr_reward_coef = torch.linspace(0.0, 0.0, self.num_actors // self.intr_coef_block_size).to(self.ppo_device)[env_ids]
-                self.intr_reward_model = None
-            else:
-                raise NotImplementedError
+                expl_reward_type = config.get('expl_reward_type')
+                if expl_reward_type == 'entropy':
+                    self.intr_reward_coef = torch.linspace(0.5, 0.0, self.num_actors // self.intr_coef_block_size).to(self.ppo_device)[env_ids] * config.get('expl_reward_coef_scale')
+                    self.intr_reward_model = None
+                elif expl_reward_type == 'none':
+                    self.intr_reward_coef = torch.linspace(0.0, 0.0, self.num_actors // self.intr_coef_block_size).to(self.ppo_device)[env_ids]
+                    self.intr_reward_model = None
+                else:
+                    raise NotImplementedError
         else:
+            self.gpu_level_sapg = False
             self.intr_reward_coef = None
             self.intr_reward_coef_embd = None
             self.intr_reward_model = None
-        
+
         self.maybe_multiprocess = not self.expl_type.startswith('mixed_expl')
-        
+
         self.ignore_env_boundary = config.get('good_reset_boundary', 0)
         if self.expl_type.startswith('mixed_expl'):
             self.ignore_env_boundary = max(self.ignore_env_boundary, self.num_actors - self.intr_coef_block_size)
-        
+
+
+    def _setup_gpu_level_sapg(self, config):
+        """Flat GPU-level SAPG configuration.
+
+        Each rank is one SAPG block with a single exploration coefficient (block b == rank b,
+        matching what a single process running world_size blocks would assign). The rank's whole
+        rollout carries that rank's embedding, so after the per-rank rollouts are all-gathered the
+        concatenated batch is laid out exactly like that single process -- which lets the standard
+        augment_batch_for_mixed_expl consume it unchanged. Two views are built: local (this rank's,
+        used during rollout) and global (block-ordered over world_size*num_actors, used by the
+        gathered augment + the per-block PPO entropy term + block logging).
+        """
+        ws = self.world_size
+        r = self.global_rank
+        # one block per rank over this rank's local envs
+        self.intr_coef_block_size = self.num_actors
+        embd_dim = config.get('expl_reward_coef_embd_size', 32)
+        disjoint = ('disjoint' in self.expl_type) or ('learn_param' in self.expl_type)
+        # per-rank embedding generator value: rank 0 == 50 .. rank ws-1 == 0 (matches upstream block 0..N)
+        gen_all = torch.linspace(50.0, 0.0, ws).to(self.ppo_device)  # [ws]
+        if disjoint:
+            embd_all = gen_all.reshape(-1, 1)  # [ws, 1]
+        else:
+            embd_all = create_sinusoidal_encoding(gen_all, embd_dim, n=100).to(self.ppo_device)  # [ws, embd]
+        expl_reward_type = config.get('expl_reward_type')
+        if expl_reward_type == 'entropy':
+            coef_all = torch.linspace(0.5, 0.0, ws).to(self.ppo_device) * config.get('expl_reward_coef_scale')  # [ws]
+        elif expl_reward_type == 'none':
+            coef_all = torch.zeros(ws, device=self.ppo_device)                           # [ws]
+        else:
+            raise NotImplementedError
+        self.intr_reward_model = None
+        block_ids = torch.arange(ws, device=self.ppo_device).repeat_interleave(self.num_actors)  # [ws*num_actors]
+        # local (rollout) view: every local env carries THIS rank's coef/embedding
+        self._gpu_num_actors_local = self.num_actors
+        self._gpu_local_intr_embd = embd_all[r].reshape(1, -1).repeat(self.num_actors, 1)  # [num_actors, embd]
+        self._gpu_local_intr_coef = coef_all[r].repeat(self.num_actors)                    # [num_actors]
+        # global (augment + train) view: block b == rank b over the gathered ws*num_actors envs
+        self._gpu_global_num_actors = ws * self.num_actors
+        self._gpu_global_intr_embd = embd_all[block_ids]                                   # [ws*num_actors, embd]
+        self._gpu_global_intr_coef = coef_all[block_ids]                                   # [ws*num_actors]
+        # start in the local view (rollout happens first each epoch)
+        self.intr_reward_coef_embd = self._gpu_local_intr_embd
+        self.intr_reward_coef = self._gpu_local_intr_coef
+        # GPU-level: each rank optimises ONE shard (1/ws) of the global augmented D. Shrink the
+        # per-rank minibatch to minibatch_size // ws so per-rank #minibatches == the #minibatches a
+        # single process takes over the full trimmed D at the ORIGINAL minibatch_size, and each grad
+        # all_reduce(SUM)/ws averages the ws shards' k-th (mb//ws)-row minibatch into exactly one
+        # full-D size-`minibatch_size` minibatch gradient. Do NOT recompute self.num_minibatches:
+        # it is used ONLY by the RNN init assert at init_tensors and must stay the config-time value
+        # H*num_actors_local // minibatch_size.
+        ws = self.world_size
+        assert self.minibatch_size % ws == 0, \
+            f'gpu_level_sapg needs minibatch_size ({self.minibatch_size}) divisible by world_size ({ws})'
+        self.minibatch_size = self.minibatch_size // ws
+        if ('central_value_config' in config and config['central_value_config'] is not None):
+            cvc = config['central_value_config']
+            cv_mb = cvc.get('minibatch_size')
+            assert cv_mb is not None and cv_mb % ws == 0, \
+                f'gpu_level_sapg needs central_value_config.minibatch_size divisible by world_size ({ws})'
+            cvc['minibatch_size'] = cv_mb // ws   # in-place; same dict object CentralValueTrain reads
+
+    def _enter_global_sapg_context(self):
+        """Swap block-related attrs to the GLOBAL (world_size-block) view so the gathered batch is
+        aggregated / optimised / logged as one process running world_size blocks. Rollout uses the
+        local view; _exit restores it before the next rollout."""
+        self.num_actors = self._gpu_global_num_actors
+        self.intr_reward_coef_embd = self._gpu_global_intr_embd
+        self.intr_reward_coef = self._gpu_global_intr_coef
+
+    def _exit_global_sapg_context(self):
+        self.num_actors = self._gpu_num_actors_local
+        self.intr_reward_coef_embd = self._gpu_local_intr_embd
+        self.intr_reward_coef = self._gpu_local_intr_coef
+
+    def _gather_rollout(self, batch_dict, extras):
+        """All-gather the per-rank rollout into a single global batch laid out as world_size blocks
+        (block b == rank b). Flattened batch_dict tensors are env-major so they concat on dim 0;
+        raw [horizon, num_actors, ...] extras concat on the env dim 1. Per-rank scalars (played_frames,
+        step_time) stay local -- global frame accounting is done via *world_size in logging."""
+        ws = self.world_size
+        gathered = {}
+        for k, v in batch_dict.items():
+            if k in ('played_frames', 'step_time'):
+                gathered[k] = v
+            elif k == 'rnn_states':
+                # packed actor rnn_states: LIST of [num_layers, num_actors(GAME axis), hidden].
+                # rank order == block order (block b == rank b, _setup), so dim=1 concat
+                # matches the single-process ws-block packed layout [num_layers, ws*na, hidden].
+                gathered[k] = [all_gather_cat(s, ws, dim=1) for s in v] if v is not None else None
+            elif torch.is_tensor(v):
+                gathered[k] = all_gather_cat(v, ws, dim=0)
+            else:
+                gathered[k] = v
+        g_extras = dict(extras)
+        for k in ('rewards', 'obs', 'states', 'dones', 'mb_extr_rewards', 'mb_intr_rewards'):
+            if extras.get(k) is not None:
+                g_extras[k] = all_gather_cat(extras[k], ws, dim=1)
+        g_extras['last_dones'] = all_gather_cat(extras['last_dones'], ws, dim=0)
+        last_obs = extras['last_obs']
+        g_last_obs = {'obs': all_gather_cat(last_obs['obs'], ws, dim=0)}
+        if last_obs.get('states') is not None:
+            g_last_obs['states'] = all_gather_cat(last_obs['states'], ws, dim=0)
+        g_extras['last_obs'] = g_last_obs
+        if self.is_rnn:
+            # NOT usable in the dim=1 extras loop above: rnn_state_buffer's env axis is dim 2.
+            if extras.get('rnn_states') is not None:            # rnn_state_buffer [H, num_layers, na, hidden]
+                g_extras['rnn_states'] = [all_gather_cat(s, ws, dim=2) for s in extras['rnn_states']]
+            if extras.get('last_rnn_states') is not None:       # [num_layers, na, hidden]
+                g_extras['last_rnn_states'] = [all_gather_cat(s, ws, dim=1) for s in extras['last_rnn_states']]
+        return gathered, g_extras
+
+    def _shard_batch(self, batch_dict):
+        """Split the global aggregated dataset into world_size equal contiguous shards (aligned to
+        whole horizon-length trajectories) and keep this rank's shard. Trimming to a multiple of
+        world_size keeps shards equal, so grad all-reduce (SUM / world_size) is an exact average
+        over the global dataset. Because D is identical on every rank, contiguous slicing is a clean
+        disjoint partition; each rank then shuffles its own shard for minibatching."""
+        ws = self.world_size
+        r = self.global_rank
+        H = self.horizon_length
+        # seq_length must equal horizon so one horizon-trajectory == one RNN game; the game-axis
+        # rnn shard (start//H) and the flat dim0 shard ([start:end]) then index identical games.
+        assert self.seq_length == H, \
+            'gpu_level_sapg requires seq_length == horizon_length (one game per trajectory)'
+        n_traj = len(batch_dict['returns']) // H
+        # LEARNING-SIGNAL EQUIVALENCE: trim the GLOBAL augmented D (identical on every rank) so its
+        # trajectory count is divisible by BOTH ws (equal shards) AND games_per_mb*ws (so every
+        # per-rank minibatch is exactly minibatch_size rows -> mean_list(ep_kls) == row-weighted KL,
+        # dist_mean_var_count pools over exactly the trimmed D, grad all_reduce/ws == full-D mean).
+        # A single-process reference over this SAME trimmed D is the equivalence target.
+        games_per_mb = max(1, self.minibatch_size // self.seq_length)   # NOTE: self.minibatch_size already //ws
+        block = ws * games_per_mb
+        n_traj_keep = (n_traj // block) * block
+        assert n_traj_keep > 0, \
+            f'gpu_level_sapg: no full global minibatch (n_traj={n_traj}, ws*games_per_mb={block}); ' \
+            f'increase num_actors or reduce minibatch_size'
+        traj_per = n_traj_keep // ws
+        start = r * traj_per * H
+        end = start + traj_per * H
+        g_start = r * traj_per          # game axis (== dim1), one game == one horizon-traj (seq==H)
+        g_end = g_start + traj_per
+        out = {}
+        for k, v in batch_dict.items():
+            if k in ('played_frames', 'step_time'):
+                out[k] = v
+            elif k == 'rnn_states':
+                # packed rnn_states: list of [num_layers, games, hidden]; shard on dim1 by the SAME
+                # game range as the flat dim0 slice (both keyed off the trimmed n_traj_keep).
+                out[k] = [s[:, g_start:g_end, :].contiguous() for s in v] if v is not None else None
+            elif v is not None and torch.is_tensor(v):
+                out[k] = v[start:end]
+            else:
+                out[k] = v
+        if self.is_rnn and out.get('rnn_states') is not None:
+            # PPODataset._get_item_rnn game math: rnn dim1 count * seq_length must == flat rows.
+            assert out['rnn_states'][0].shape[1] * self.seq_length == len(out['returns']), \
+                'gpu_level_sapg rnn shard: rnn game-axis vs flat-row mismatch'
+        return out
 
     def trancate_gradients_and_step(self):
         if self.multi_gpu:
@@ -1374,9 +1541,23 @@ class ContinuousA2CBase(A2CBase):
         play_time_start = time.time()
         with torch.no_grad():
             orig_batch_dict, ps_extras = self.play_steps()
-            
+
+            if self.gpu_level_sapg:
+                # each rank rolled out its own exploration block; gather them into one global
+                # batch and switch to the world_size-block view for aggregation + optimisation
+                if self.has_central_value:
+                    assert not self.central_value_net.is_rnn, \
+                        'gpu_level_sapg: RNN central_value critic unsupported (its mb_rnn_states are ' \
+                        'LOCAL-num_actors and are NOT gathered/sharded); use a pure-MLP asymmetric critic'
+                self._enter_global_sapg_context()
+                orig_batch_dict, ps_extras = self._gather_rollout(orig_batch_dict, ps_extras)
+
             if self.expl_type.startswith('mixed_expl') and self.use_others_experience != 'none':
                 batch_dict = self.augment_batch_for_mixed_expl(orig_batch_dict, ps_extras)
+                if self.gpu_level_sapg:
+                    # keep only this rank's disjoint shard of the global aggregated dataset;
+                    # grad all-reduce then averages shards into the exact global-dataset gradient
+                    batch_dict = self._shard_batch(batch_dict)
             else:
                 batch_dict = orig_batch_dict
             if self.expl_type.startswith('mixed_expl'):
@@ -1389,11 +1570,13 @@ class ContinuousA2CBase(A2CBase):
         self.set_train()
         self.curr_frames = batch_dict.pop('played_frames')
         self.prepare_dataset(batch_dict)
-        
+
         ret_val = self.algo_observer.after_steps()
         if isinstance(ret_val, DictConfig):
+            if self.gpu_level_sapg:
+                self._exit_global_sapg_context()
             return ret_val
-        
+
         if self.has_central_value:
             self.train_central_value()
 
@@ -1462,6 +1645,10 @@ class ContinuousA2CBase(A2CBase):
         print(f"  Update time             : {update_time:.{DECIMALS}f} s")
         print(f"  Time to train epoch     : {total_time:.{DECIMALS}f} s\n")
 
+        if self.gpu_level_sapg:
+            # restore the local (rollout) view before the next epoch's play_steps
+            self._exit_global_sapg_context()
+
         return batch_dict['step_time'], play_time, update_time, total_time, a_losses, c_losses, b_losses, entropies, kls, last_lr, lr_mul, extra_infos
 
     def prepare_dataset(self, batch_dict, train_value_mean_std=True):
@@ -1485,6 +1672,8 @@ class ContinuousA2CBase(A2CBase):
             returns = self.value_mean_std(returns)
             self.value_mean_std.eval()
 
+        assert advantages.dim() == 2 and advantages.shape[1] == self.value_size, \
+            f'prepare_dataset: advantages {tuple(advantages.shape)} not [D, value_size={self.value_size}]'
         advantages = torch.sum(advantages, axis=1)
 
         if self.normalize_advantage:

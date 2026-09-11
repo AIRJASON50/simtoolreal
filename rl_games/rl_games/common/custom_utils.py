@@ -1,5 +1,19 @@
 import numpy as np
 import torch
+import torch.distributed as dist
+
+def all_gather_cat(tensor, world_size, dim=0):
+    """
+    All-gather a same-shaped tensor from every rank and concatenate along dim in rank order.
+    Returns None for None inputs. Used by GPU-level SAPG to reassemble the per-rank rollout
+    into one global batch that the standard block-based augment consumes as num_blocks == world_size.
+    All ranks must pass identically-shaped tensors (num_actors and horizon are equal across ranks).
+    """
+    if tensor is None:
+        return None
+    gathered = [torch.empty_like(tensor) for _ in range(world_size)]
+    dist.all_gather(gathered, tensor.contiguous())
+    return torch.cat(gathered, dim=dim)
 
 def swap_and_flatten01(arr):
     """

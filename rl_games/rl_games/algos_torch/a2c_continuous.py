@@ -31,7 +31,8 @@ class A2CAgent(a2c_common.ContinuousA2CBase):
         }
         
         if self.expl_type.startswith('mixed_expl'):
-            build_config['coef_ids'] = self.intr_reward_coef_embd[::self.intr_coef_block_size,0]
+            _embd = self._gpu_global_intr_embd if self.gpu_level_sapg else self.intr_reward_coef_embd
+            build_config['coef_ids'] = _embd[::self.intr_coef_block_size,0]
             build_config['coef_id_idx'] = self.obs_shape[0]
         
         self.model = self.network.build(build_config)
@@ -66,7 +67,8 @@ class A2CAgent(a2c_common.ContinuousA2CBase):
                 'type': 'simple' if 'learn_param' not in self.expl_type else 'extra_param',
             }
             if self.expl_type.startswith('mixed_expl'):
-                cv_config['coef_ids'] = self.intr_reward_coef_embd[::self.intr_coef_block_size,0]
+                _embd = self._gpu_global_intr_embd if self.gpu_level_sapg else self.intr_reward_coef_embd
+                cv_config['coef_ids'] = _embd[::self.intr_coef_block_size,0]
                 cv_config['coef_id_idx'] = self.state_shape[0]
             self.central_value_net = central_value.CentralValueTrain(**cv_config).to(self.ppo_device)
 
