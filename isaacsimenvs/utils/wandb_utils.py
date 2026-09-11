@@ -75,7 +75,6 @@ class WandbAlgoObserver(AlgoObserver):
                 id=wandb_unique_id,
                 name=display_name,
                 resume=True,
-                settings=wandb.Settings(start_method="fork"),
             )
             wandb.run.log_code(root=logcode_dir)
             print(f"[Wandb] run dir: {wandb.run.dir} (log_code root: {logcode_dir})")
