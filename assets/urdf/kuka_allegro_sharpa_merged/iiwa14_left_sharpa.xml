@@ -1,0 +1,426 @@
+<mujoco model="iiwa14 scene">
+  <compiler angle="radian" meshdir="assets/"/>
+
+  <option timestep="0.00166667" integrator="implicitfast"/>
+
+  <size nkey="1"/>
+
+  <statistic extent="1" center="0.2 0 0.2"/>
+
+  <visual>
+    <global azimuth="-120" elevation="-20"/>
+    <headlight ambient="0.3 0.3 0.3" diffuse="0.6 0.6 0.6" specular="0 0 0"/>
+    <rgba haze="0.15 0.25 0.35 1"/>
+  </visual>
+
+  <default>
+    <default class="iiwa">
+      <material shininess="0.25"/>
+      <site size="0.001 0.005 0.005" group="4" rgba="1 0 0 1"/>
+      <general biastype="affine" gainprm="2000" biasprm="0 -2000 -200"/>
+      <default class="joint1">
+        <joint range="-2.96706 2.96706"/>
+        <general ctrlrange="-2.96706 2.96706"/>
+        <default class="joint2">
+          <joint range="-2.0944 2.0944"/>
+          <general ctrlrange="-2.0944 2.0944"/>
+        </default>
+      </default>
+      <default class="joint3">
+        <joint range="-3.05433 3.05433"/>
+        <general ctrlrange="-3.05433 3.05433"/>
+      </default>
+      <default class="visual">
+        <geom type="mesh" contype="0" conaffinity="0" group="2" material="gray"/>
+      </default>
+      <default class="collision">
+        <geom group="3"/>
+      </default>
+    </default>
+    <default class="palmmain">
+      <default class="palmCMC_joint">
+        <joint armature="0.0032" damping="4.2e-05" frictionloss="0.132"/>
+      </default>
+      <default class="palmPCMC_joint">
+        <joint armature="0.00012" damping="4.2e-05" frictionloss="0.012"/>
+      </default>
+      <default class="palmMCP_joint">
+        <joint armature="0.00265" damping="2.38e-05" frictionloss="0.07456"/>
+      </default>
+      <default class="palmPIP_joint">
+        <joint armature="0.0006" damping="4.06e-06" frictionloss="0.01276"/>
+      </default>
+      <default class="palmDIP_joint">
+        <joint armature="0.00042" damping="1.21e-06" frictionloss="0.00378738"/>
+      </default>
+      <default class="palmelastomer_geom"/>
+    </default>
+  </default>
+
+  <asset>
+    <texture type="skybox" colorspace="auto" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072"/>
+    <texture type="2d" colorspace="auto" name="groundplane" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4" rgb2="0.1 0.2 0.3" markrgb="0.8 0.8 0.8" width="300" height="300"/>
+    <material name="gray" class="iiwa" rgba="0.4 0.4 0.4 1"/>
+    <material name="light_gray" class="iiwa" rgba="0.6 0.6 0.6 1"/>
+    <material name="black" class="iiwa" rgba="0 0 0 1"/>
+    <material name="orange" class="iiwa" rgba="1 0.423529 0.0392157 1"/>
+    <material name="groundplane" texture="groundplane" texrepeat="5 5" texuniform="true" reflectance="0.2"/>
+    <mesh name="link_0" content_type="model/obj" file="link_0.obj"/>
+    <mesh name="link_1" content_type="model/obj" file="link_1.obj"/>
+    <mesh name="link_2_orange" content_type="model/obj" file="link_2_orange.obj"/>
+    <mesh name="link_2_grey" content_type="model/obj" file="link_2_grey.obj"/>
+    <mesh name="link_3" content_type="model/obj" file="link_3.obj"/>
+    <mesh name="band" content_type="model/obj" file="band.obj"/>
+    <mesh name="kuka" content_type="model/obj" file="kuka.obj"/>
+    <mesh name="link_4_orange" content_type="model/obj" file="link_4_orange.obj"/>
+    <mesh name="link_4_grey" content_type="model/obj" file="link_4_grey.obj"/>
+    <mesh name="link_5" content_type="model/obj" file="link_5.obj"/>
+    <mesh name="link_6_orange" content_type="model/obj" file="link_6_orange.obj"/>
+    <mesh name="link_6_grey" content_type="model/obj" file="link_6_grey.obj"/>
+    <mesh name="link_7" content_type="model/obj" file="link_7.obj"/>
+    <mesh name="palmleft_hand_C_MC_visual" content_type="model/stl" file="left_hand_C_MC_visual_.STL"/>
+    <mesh name="palmleft_hand_C_MC" content_type="model/stl" file="left_hand_C_MC.STL"/>
+    <mesh name="palmleft_thumb_CMC_VL_visual" content_type="model/stl" file="left_thumb_CMC_VL.STL"/>
+    <mesh name="palmleft_thumb_MC_visual" content_type="model/stl" file="left_thumb_MC_visual.STL"/>
+    <mesh name="palmleft_thumb_MC" content_type="model/stl" file="left_thumb_MC.STL"/>
+    <mesh name="palmleft_thumb_MCP_VL_visual" content_type="model/stl" file="left_thumb_MCP_VL_visual.STL"/>
+    <mesh name="palmleft_thumb_PP_visual" content_type="model/stl" file="left_thumb_PP_visual.STL"/>
+    <mesh name="palmleft_thumb_PP" content_type="model/stl" file="left_thumb_PP.STL"/>
+    <mesh name="palmleft_thumb_DP_visual" content_type="model/stl" file="left_thumb_DP_visual.STL"/>
+    <mesh name="palmleft_thumb_DP" content_type="model/stl" file="left_thumb_DP.STL"/>
+    <mesh name="palmthumb_elastomer_surface" content_type="model/stl" file="thumb_elastomer_surface.STL"/>
+    <mesh name="palmthumb_elastomer" content_type="model/stl" file="thumb_elastomer.STL"/>
+    <mesh name="palmleft_MCP_VL_visual" content_type="model/stl" file="left_MCP_VL_visual.STL"/>
+    <mesh name="palmMCP_VL" content_type="model/stl" file="MCP_VL.STL"/>
+    <mesh name="palmleft_PP_visual" content_type="model/stl" file="left_PP_visual.STL"/>
+    <mesh name="palmleft_PP" content_type="model/stl" file="left_PP.STL"/>
+    <mesh name="palmleft_MP_visual" content_type="model/stl" file="left_MP_visual.STL"/>
+    <mesh name="palmleft_MP" content_type="model/stl" file="left_MP.STL"/>
+    <mesh name="palmleft_DP_visual" content_type="model/stl" file="left_DP_visual.STL"/>
+    <mesh name="palmleft_DP" content_type="model/stl" file="left_DP.STL"/>
+    <mesh name="palmelastomer_surface" content_type="model/stl" file="elastomer_surface.STL"/>
+    <mesh name="palmelastomer" content_type="model/stl" file="elastomer.STL"/>
+    <mesh name="palmleft_pinky_MC_visual" content_type="model/stl" file="left_pinky_MC_visual.STL"/>
+    <mesh name="palmleft_pinky_MC" content_type="model/stl" file="left_pinky_MC.STL"/>
+  </asset>
+
+  <worldbody>
+    <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"/>
+    <light name="top" pos="0 0 2" mode="trackcom"/>
+    <light pos="0 0 1.5" type="directional"/>
+    <body name="base" childclass="iiwa">
+      <inertial pos="-0.1 0 0.07" mass="5" diaginertia="0.05 0.06 0.03"/>
+      <geom class="visual" mesh="link_0"/>
+      <geom class="collision" size="0.12" pos="0 0 0.03"/>
+      <geom class="collision" size="0.08" pos="-0.08 0 0.103"/>
+      <geom class="collision" size="0.08" pos="-0.08 0 0.04"/>
+      <geom class="collision" size="0.1" pos="0 0 0.14"/>
+      <body name="link1" pos="0 0 0.1575">
+        <inertial pos="0 -0.03 0.12" mass="5.76" diaginertia="0.0333 0.033 0.0123"/>
+        <joint name="joint1" class="joint1"/>
+        <geom class="visual" mesh="link_1"/>
+        <geom class="collision" size="0.08" pos="0 0 -0.0005"/>
+        <geom class="collision" size="0.075" pos="0.01 -0.025 0.0425"/>
+        <geom class="collision" size="0.075" pos="-0.01 -0.025 0.0425"/>
+        <geom class="collision" size="0.07" pos="0.01 -0.045 0.1025"/>
+        <geom class="collision" size="0.07" pos="-0.01 -0.045 0.1025"/>
+        <body name="link2" pos="0 0 0.2025" quat="0 0 0.707107 0.707107">
+          <inertial pos="0.0003 0.059 0.042" quat="0 0 0.707107 0.707107" mass="6.35" diaginertia="0.0305 0.0304 0.011"/>
+          <joint name="joint2" class="joint2"/>
+          <geom class="visual" material="orange" mesh="link_2_orange"/>
+          <geom class="visual" mesh="link_2_grey"/>
+          <geom class="collision" size="0.095" pos="0 0 -0.01"/>
+          <geom class="collision" size="0.09" pos="0 0 0.045"/>
+          <geom class="collision" size="0.07" pos="-0.01 0.04 0.054"/>
+          <geom class="collision" size="0.065" pos="-0.01 0.09 0.04"/>
+          <geom class="collision" size="0.065" pos="-0.01 0.13 0.02"/>
+          <geom class="collision" size="0.07" pos="0.01 0.04 0.054"/>
+          <geom class="collision" size="0.065" pos="0.01 0.09 0.04"/>
+          <geom class="collision" size="0.065" pos="0.01 0.13 0.02"/>
+          <geom class="collision" size="0.075" pos="0 0.18 0"/>
+          <body name="link3" pos="0 0.2045 0" quat="0 0 0.707107 0.707107">
+            <inertial pos="0 0.03 0.13" mass="3.5" diaginertia="0.025 0.0238 0.0076"/>
+            <joint name="joint3" class="joint1"/>
+            <geom class="visual" mesh="link_3"/>
+            <geom class="visual" material="light_gray" mesh="band"/>
+            <geom class="visual" material="black" mesh="kuka"/>
+            <geom class="collision" size="0.075" pos="0 0 0.0355"/>
+            <geom class="collision" size="0.06" pos="0.01 0.023 0.0855"/>
+            <geom class="collision" size="0.055" pos="0.01 0.048 0.1255"/>
+            <geom class="collision" size="0.06" pos="0.01 0.056 0.1755"/>
+            <geom class="collision" size="0.06" pos="-0.01 0.023 0.0855"/>
+            <geom class="collision" size="0.055" pos="-0.01 0.048 0.1255"/>
+            <geom class="collision" size="0.06" pos="-0.01 0.056 0.1755"/>
+            <geom class="collision" size="0.075" pos="0 0.045 0.2155"/>
+            <geom class="collision" size="0.075" pos="0 0 0.2155"/>
+            <body name="link4" pos="0 0 0.2155" quat="0.707107 0.707107 0 0">
+              <inertial pos="0 0.067 0.034" quat="0.707107 0.707107 0 0" mass="3.5" diaginertia="0.017 0.0164 0.006"/>
+              <joint name="joint4" class="joint2"/>
+              <geom class="visual" material="orange" mesh="link_4_orange"/>
+              <geom class="visual" mesh="link_4_grey"/>
+              <geom class="collision" size="0.078" pos="0 0.01 0.046"/>
+              <geom class="collision" size="0.06" pos="0.01 0.06 0.052"/>
+              <geom class="collision" size="0.065" pos="0.01 0.12 0.034"/>
+              <geom class="collision" size="0.06" pos="-0.01 0.06 0.052"/>
+              <geom class="collision" size="0.065" pos="-0.01 0.12 0.034"/>
+              <geom class="collision" size="0.075" pos="0 0.184 0"/>
+              <body name="link5" pos="0 0.1845 0" quat="0 0 0.707107 0.707107">
+                <inertial pos="0.0001 0.021 0.076" mass="3.5" diaginertia="0.01 0.0087 0.00449"/>
+                <joint name="joint5" class="joint1"/>
+                <geom class="visual" mesh="link_5"/>
+                <geom class="visual" material="light_gray" mesh="band"/>
+                <geom class="visual" material="black" mesh="kuka"/>
+                <geom class="collision" size="0.075" pos="0 0 0.0335"/>
+                <geom class="collision" size="0.05" pos="-0.012 0.031 0.0755"/>
+                <geom class="collision" size="0.05" pos="0.012 0.031 0.0755"/>
+                <geom class="collision" size="0.04" pos="-0.012 0.06 0.1155"/>
+                <geom class="collision" size="0.04" pos="0.012 0.06 0.1155"/>
+                <geom class="collision" size="0.04" pos="-0.01 0.065 0.1655"/>
+                <geom class="collision" size="0.04" pos="0.01 0.065 0.1655"/>
+                <geom class="collision" size="0.035" pos="-0.012 0.065 0.1855"/>
+                <geom class="collision" size="0.035" pos="0.012 0.065 0.1855"/>
+                <body name="link6" pos="0 0 0.2155" quat="0.707107 0.707107 0 0">
+                  <inertial pos="0 0.0006 0.0004" quat="0.707107 0.707107 0 0" mass="1.8" diaginertia="0.0049 0.0047 0.0036"/>
+                  <joint name="joint6" class="joint2"/>
+                  <geom class="visual" material="orange" mesh="link_6_orange"/>
+                  <geom class="visual" mesh="link_6_grey"/>
+                  <geom class="collision" size="0.055" pos="0 0 -0.059"/>
+                  <geom class="collision" size="0.065" pos="0 -0.03 0.011"/>
+                  <geom class="collision" size="0.08"/>
+                  <body name="link7" pos="0 0.081 0" quat="0 0 0.707107 0.707107">
+                    <inertial pos="0 0 0.02" mass="1.2" diaginertia="0.001 0.001 0.001"/>
+                    <joint name="joint7" class="joint3"/>
+                    <geom class="visual" mesh="link_7"/>
+                    <geom class="collision" size="0.06" pos="0 0 0.001"/>
+                    <site name="attachment_site" pos="0 0 0.045"/>
+                    <body name="palmworld" pos="0 0 0.045">
+                      <body name="palmleft_hand_C_MC" pos="0 0 0.05" quat="0.793353 0 0 -0.608761">
+                        <inertial pos="0.0060282 0.00091891 0.038914" mass="0.72045" diaginertia="0.00071328 0.00081371 0.00020795"/>
+                        <geom name="palmleft_hand_C_MC_visual" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.79216 0.81961 0.93333 1" density="0" mesh="palmleft_hand_C_MC_visual"/>
+                        <geom name="palmleft_hand_C_MC" type="mesh" group="3" rgba="0.79216 0.81961 0.93333 1" mesh="palmleft_hand_C_MC"/>
+                        <body name="palmleft_thumb_CMC_VL" pos="0.01 -0.026 0.0212" quat="0.707105 0 0 -0.707108">
+                          <inertial pos="0 0 0" mass="1e-06" diaginertia="2e-12 2e-12 2e-12"/>
+                          <joint name="palmleft_thumb_CMC_FE" class="palmCMC_joint" range="-0.1745 1.9199"/>
+                          <geom type="mesh" contype="0" conaffinity="0" group="1" rgba="0.79216 0.81961 0.93333 1" density="0" mesh="palmleft_thumb_CMC_VL_visual"/>
+                          <body name="palmleft_thumb_MC" pos="0 -0.005 0" quat="0.65328 0.653282 -0.270598 0.270599">
+                            <inertial pos="0.0385056 -0.0105846 -0.00991873" quat="0.158428 0.667584 0.222963 0.692474" mass="0.116" diaginertia="3.83518e-05 3.34032e-05 1.641e-05"/>
+                            <joint name="palmleft_thumb_CMC_AA" class="palmCMC_joint" range="-0.3491 0.3491"/>
+                            <geom name="palmleft_thumb_MC_visual" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.79216 0.81961 0.93333 1" density="0" mesh="palmleft_thumb_MC_visual"/>
+                            <geom name="palmleft_thumb_MC" type="mesh" group="3" rgba="0.79216 0.81961 0.93333 1" mesh="palmleft_thumb_MC"/>
+                            <body name="palmleft_thumb_MCP_VL" pos="0.065 -0.006 -0.010392" quat="0.965926 -0.25882 0 0">
+                              <inertial pos="4.8e-09 0.000869809 -3.6e-09" mass="0.001" diaginertia="2e-12 2e-12 2e-12"/>
+                              <joint name="palmleft_thumb_MCP_FE" class="palmMCP_joint" range="-0.5236 1.3963"/>
+                              <geom type="mesh" contype="0" conaffinity="0" group="1" rgba="0.79216 0.81961 0.93333 1" density="0" mesh="palmleft_thumb_MCP_VL_visual"/>
+                              <body name="palmleft_thumb_PP" quat="0.707105 0.707108 0 0">
+                                <inertial pos="0.0219483 -0.00015581 0.00149446" quat="0.526585 0.473016 0.473458 0.524215" mass="0.04955" diaginertia="4.60001e-06 4.35675e-06 2.57733e-06"/>
+                                <joint name="palmleft_thumb_MCP_AA" class="palmMCP_joint" range="-0.3491 0.3491"/>
+                                <geom name="palmleft_thumb_PP_visual" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.79216 0.81961 0.93333 1" density="0" mesh="palmleft_thumb_PP_visual"/>
+                                <geom name="palmleft_thumb_PP" type="mesh" group="3" rgba="0.79216 0.81961 0.93333 1" mesh="palmleft_thumb_PP"/>
+                                <body name="palmleft_thumb_DP" pos="0.039 0 0" quat="0.707105 -0.707108 0 0">
+                                  <inertial pos="0.00985829 -0.0101254 0.00044771" quat="0.649916 0.20258 -0.647399 0.342703" mass="0.006986" diaginertia="8.79989e-07 8.08573e-07 2.50588e-07"/>
+                                  <joint name="palmleft_thumb_IP" class="palmPIP_joint" range="0 1.7453"/>
+                                  <geom name="palmleft_thumb_DP_visual" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.79216 0.81961 0.93333 1" density="0" mesh="palmleft_thumb_DP_visual"/>
+                                  <geom name="palmleft_thumb_DP" type="mesh" group="3" rgba="0.79216 0.81961 0.93333 1" mesh="palmleft_thumb_DP"/>
+                                  <geom quat="0.5 0.5 -0.5 0.5" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.2 1 0.2 1" density="0" mesh="palmthumb_elastomer"/>
+                                  <geom name="palmleft_thumb_elastomer" class="palmelastomer_geom" quat="0.5 0.5 -0.5 0.5" type="mesh" group="3" rgba="0.2 1 0.2 1" mesh="palmthumb_elastomer"/>
+                                </body>
+                              </body>
+                            </body>
+                          </body>
+                        </body>
+                        <body name="palmleft_index_MCP_VL" pos="0.001 -0.0303 0.0957" quat="0.499998 -0.500002 -0.5 -0.5">
+                          <inertial pos="4.8e-09 0.00086981 -3.6e-09" mass="0.001" diaginertia="2e-12 2e-12 2e-12"/>
+                          <joint name="palmleft_index_MCP_FE" class="palmMCP_joint" range="-0.174533 1.5708"/>
+                          <geom name="palmleft_index_MCP_VL_visual" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.79216 0.81961 0.93333 1" density="0" mesh="palmleft_MCP_VL_visual"/>
+                          <geom name="palmleft_index_MCP_VL" type="mesh" group="3" rgba="0.79216 0.81961 0.93333 1" mesh="palmMCP_VL"/>
+                          <body name="palmleft_index_PP" quat="0.707105 0.707108 0 0">
+                            <inertial pos="0.0243772 -1.00263e-06 0.000755901" quat="0.519877 0.479286 0.479204 0.519977" mass="0.04138" diaginertia="6.82371e-06 6.54097e-06 2.16753e-06"/>
+                            <joint name="palmleft_index_MCP_AA" class="palmMCP_joint" range="-0.3491 0.3491"/>
+                            <geom name="palmleft_index_PP_visual" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.79216 0.81961 0.93333 1" density="0" mesh="palmleft_PP_visual"/>
+                            <geom name="palmleft_index_PP" type="mesh" group="3" rgba="0.79216 0.81961 0.93333 1" mesh="palmleft_PP"/>
+                            <body name="palmleft_index_MP" pos="0.047 0 0" quat="0.707105 -0.707108 0 0">
+                              <inertial pos="0.015316 -0.00138561 6.27987e-08" quat="-0.0196259 0.706839 0.0195186 0.706832" mass="0.02509" diaginertia="2.28516e-06 2.26758e-06 9.99868e-07"/>
+                              <joint name="palmleft_index_PIP" class="palmPIP_joint" range="0 1.7453"/>
+                              <geom name="palmleft_index_MP_visual" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.79216 0.81961 0.93333 1" density="0" mesh="palmleft_MP_visual"/>
+                              <geom name="palmleft_index_MP" type="mesh" group="3" rgba="0.79216 0.81961 0.93333 1" mesh="palmleft_MP"/>
+                              <body name="palmleft_index_DP" pos="0.0315 0 0">
+                                <inertial pos="0.00931302 -0.00769378 0.000111984" quat="0.643869 0.245527 -0.649442 0.321517" mass="0.005102" diaginertia="4.23794e-07 3.8546e-07 1.37255e-07"/>
+                                <joint name="palmleft_index_DIP" class="palmDIP_joint" range="0 1.3963"/>
+                                <geom name="palmleft_index_DP_visual" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.79216 0.81961 0.93333 1" density="0" mesh="palmleft_DP_visual"/>
+                                <geom name="palmleft_index_DP" type="mesh" group="3" rgba="0.79216 0.81961 0.93333 1" mesh="palmleft_DP"/>
+                                <geom name="palmleft_index_elastomer_visual" quat="0.5 0.5 -0.5 0.5" type="mesh" contype="0" conaffinity="0" group="1" solref="0.06 0.9" rgba="0.2 1 0.2 1" density="0" mesh="palmelastomer"/>
+                                <geom name="palmleft_index_elastomer" quat="0.5 0.5 -0.5 0.5" type="mesh" group="3" rgba="0.2 1 0.2 1" mesh="palmelastomer"/>
+                              </body>
+                            </body>
+                          </body>
+                        </body>
+                        <body name="palmleft_middle_MCP_VL" pos="0 -0.01 0.0987" quat="0.499998 -0.500002 -0.5 -0.5">
+                          <inertial pos="4.8e-09 0.00086981 -3.6e-09" mass="1e-06" diaginertia="2e-12 2e-12 2e-12"/>
+                          <joint name="palmleft_middle_MCP_FE" class="palmMCP_joint" range="-0.174533 1.5708"/>
+                          <geom name="palmleft_middle_MCP_VL_visual" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.79216 0.81961 0.93333 1" density="0" mesh="palmleft_MCP_VL_visual"/>
+                          <geom name="palmleft_middle_MCP_VL" type="mesh" group="3" rgba="0.79216 0.81961 0.93333 1" mesh="palmMCP_VL"/>
+                          <body name="palmleft_middle_PP" quat="0.707105 0.707108 0 0">
+                            <inertial pos="0.0243772 -1.00263e-06 0.000755901" quat="0.519877 0.479286 0.479204 0.519977" mass="0.04138" diaginertia="6.82371e-06 6.54097e-06 2.16753e-06"/>
+                            <joint name="palmleft_middle_MCP_AA" class="palmMCP_joint" range="-0.3491 0.3491"/>
+                            <geom name="palmleft_middle_PP_visual" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.79216 0.81961 0.93333 1" density="0" mesh="palmleft_PP_visual"/>
+                            <geom name="palmleft_middle_PP" type="mesh" group="3" rgba="0.79216 0.81961 0.93333 1" mesh="palmleft_PP"/>
+                            <body name="palmleft_middle_MP" pos="0.047 0 0" quat="0.707105 -0.707108 0 0">
+                              <inertial pos="0.015316 -0.00138561 6.27987e-08" quat="-0.0196259 0.706839 0.0195186 0.706832" mass="0.02509" diaginertia="2.28516e-06 2.26758e-06 9.99868e-07"/>
+                              <joint name="palmleft_middle_PIP" class="palmPIP_joint" range="0 1.7453"/>
+                              <geom name="palmleft_middle_MP_visual" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.79216 0.81961 0.93333 1" density="0" mesh="palmleft_MP_visual"/>
+                              <geom name="palmleft_middle_MP" type="mesh" group="3" rgba="0.79216 0.81961 0.93333 1" mesh="palmleft_MP"/>
+                              <body name="palmleft_middle_DP" pos="0.0315 0 0">
+                                <inertial pos="0.00931302 -0.00769378 0.000111984" quat="0.643869 0.245527 -0.649442 0.321517" mass="0.005102" diaginertia="4.23794e-07 3.8546e-07 1.37255e-07"/>
+                                <joint name="palmleft_middle_DIP" class="palmDIP_joint" range="0 1.3963"/>
+                                <geom name="palmleft_middle_DP_visual" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.79216 0.81961 0.93333 1" density="0" mesh="palmleft_DP_visual"/>
+                                <geom name="palmleft_middle_DP" type="mesh" group="3" rgba="0.79216 0.81961 0.93333 1" mesh="palmleft_DP"/>
+                                <geom name="palmleft_middle_elastomer_visual" quat="0.5 0.5 -0.5 0.5" type="mesh" contype="0" conaffinity="0" group="1" solref="0.06 0.9" rgba="0.2 1 0.2 1" density="0" mesh="palmelastomer"/>
+                                <geom name="palmleft_middle_elastomer" quat="0.5 0.5 -0.5 0.5" type="mesh" group="3" rgba="0.2 1 0.2 1" mesh="palmelastomer"/>
+                              </body>
+                            </body>
+                          </body>
+                        </body>
+                        <body name="palmleft_ring_MCP_VL" pos="0.0015 0.0103 0.0927" quat="0.499998 -0.500002 -0.5 -0.5">
+                          <inertial pos="4.8e-09 0.00086981 3.6e-09" mass="1e-06" diaginertia="2e-12 2e-12 2e-12"/>
+                          <joint name="palmleft_ring_MCP_FE" class="palmMCP_joint" range="-0.174533 1.5708"/>
+                          <geom name="palmleft_ring_MCP_VL_visual" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.79216 0.81961 0.93333 1" density="0" mesh="palmleft_MCP_VL_visual"/>
+                          <geom name="palmleft_ring_MCP_VL" type="mesh" group="3" rgba="0.79216 0.81961 0.93333 1" mesh="palmMCP_VL"/>
+                          <body name="palmleft_ring_PP" quat="0.707105 0.707108 0 0">
+                            <inertial pos="0.0243772 -1.00263e-06 0.000755901" quat="0.519877 0.479286 0.479204 0.519977" mass="0.04138" diaginertia="6.82371e-06 6.54097e-06 2.16753e-06"/>
+                            <joint name="palmleft_ring_MCP_AA" class="palmMCP_joint" range="-0.3491 0.3491"/>
+                            <geom name="palmleft_ring_PP_visual" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.79216 0.81961 0.93333 1" density="0" mesh="palmleft_PP_visual"/>
+                            <geom name="palmleft_ring_PP" type="mesh" group="3" rgba="0.79216 0.81961 0.93333 1" mesh="palmleft_PP"/>
+                            <body name="palmleft_ring_MP" pos="0.047 0 0" quat="0.707105 -0.707108 0 0">
+                              <inertial pos="0.015316 -0.00138561 6.27987e-08" quat="-0.0196259 0.706839 0.0195186 0.706832" mass="0.02509" diaginertia="2.28516e-06 2.26758e-06 9.99868e-07"/>
+                              <joint name="palmleft_ring_PIP" class="palmPIP_joint" range="0 1.7453"/>
+                              <geom name="palmleft_ring_MP_visual" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.79216 0.81961 0.93333 1" density="0" mesh="palmleft_MP_visual"/>
+                              <geom name="palmleft_ring_MP" type="mesh" group="3" rgba="0.79216 0.81961 0.93333 1" mesh="palmleft_MP"/>
+                              <body name="palmleft_ring_DP" pos="0.0315 0 0">
+                                <inertial pos="0.00931208 -0.00769378 0.000111984" quat="0.643953 0.245771 -0.649317 0.321417" mass="0.005102" diaginertia="4.23686e-07 3.85387e-07 1.37226e-07"/>
+                                <joint name="palmleft_ring_DIP" class="palmDIP_joint" range="0 1.3963"/>
+                                <geom name="palmleft_ring_DP_visual" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.79216 0.81961 0.93333 1" density="0" mesh="palmleft_DP_visual"/>
+                                <geom name="palmleft_ring_DP" type="mesh" group="3" rgba="0.79216 0.81961 0.93333 1" mesh="palmleft_DP"/>
+                                <geom name="palmleft_ring_elastomer_visual" quat="0.499998 0.5 -0.5 0.500002" type="mesh" contype="0" conaffinity="0" group="1" solref="0.06 0.9" rgba="0.2 1 0.2 1" density="0" mesh="palmelastomer"/>
+                                <geom name="palmleft_ring_elastomer" quat="0.499998 0.5 -0.5 0.500002" type="mesh" group="3" rgba="0.2 1 0.2 1" mesh="palmelastomer"/>
+                              </body>
+                            </body>
+                          </body>
+                        </body>
+                        <body name="palmleft_pinky_MC" pos="0.01136 0.0263 0.0867" quat="1.34924e-11 3.67321e-06 -1 -3.67321e-06">
+                          <inertial pos="0.0107985 0.00598801 0.0335125" quat="0.709657 0.106152 0.0812795 0.691746" mass="0.12541" diaginertia="3.57685e-05 2.46485e-05 2.14424e-05"/>
+                          <joint name="palmleft_pinky_CMC" class="palmPCMC_joint" range="0 0.2618"/>
+                          <geom name="palmleft_pinky_MC_visual" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.79216 0.81961 0.93333 1" density="0" mesh="palmleft_pinky_MC_visual"/>
+                          <geom name="palmleft_pinky_MC" type="mesh" group="3" rgba="0.79216 0.81961 0.93333 1" mesh="palmleft_pinky_MC"/>
+                          <body name="palmleft_pinky_MCP_VL" pos="0.00836 0.0048 0" quat="0.499998 -0.5 0.5 0.500002">
+                            <inertial pos="4.8e-09 0.00086981 -3.6e-09" mass="0.001" diaginertia="2e-12 2e-12 2e-12"/>
+                            <joint name="palmleft_pinky_MCP_FE" class="palmMCP_joint" range="-0.174533 1.5708"/>
+                            <geom name="palmleft_pinky_MCP_VL_visual" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.79216 0.81961 0.93333 1" density="0" mesh="palmleft_MCP_VL_visual"/>
+                            <geom name="palmleft_pinky_MCP_VL" type="mesh" group="3" rgba="0.79216 0.81961 0.93333 1" mesh="palmMCP_VL"/>
+                            <body name="palmleft_pinky_PP" quat="0.707105 0.707108 0 0">
+                              <inertial pos="0.0243772 -1.00263e-06 0.000755901" quat="0.519877 0.479286 0.479204 0.519977" mass="0.04138" diaginertia="6.82371e-06 6.54097e-06 2.16753e-06"/>
+                              <joint name="palmleft_pinky_MCP_AA" class="palmMCP_joint" range="-0.3491 0.3491"/>
+                              <geom name="palmleft_pinky_PP_visual" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.79216 0.81961 0.93333 1" density="0" mesh="palmleft_PP_visual"/>
+                              <geom name="palmleft_pinky_PP" type="mesh" group="3" rgba="0.79216 0.81961 0.93333 1" mesh="palmleft_PP"/>
+                              <body name="palmleft_pinky_MP" pos="0.047 0 0" quat="0.707105 -0.707108 0 0">
+                                <inertial pos="0.015316 -0.00138561 6.27987e-08" quat="-0.0196259 0.706839 0.0195186 0.706832" mass="0.02509" diaginertia="2.28516e-06 2.26758e-06 9.99868e-07"/>
+                                <joint name="palmleft_pinky_PIP" class="palmPIP_joint" range="0 1.7453"/>
+                                <geom name="palmleft_pinky_MP_visual" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.79216 0.81961 0.93333 1" density="0" mesh="palmleft_MP_visual"/>
+                                <geom name="palmleft_pinky_MP" type="mesh" group="3" rgba="0.79216 0.81961 0.93333 1" mesh="palmleft_MP"/>
+                                <body name="palmleft_pinky_DP" pos="0.0315 0 0">
+                                  <inertial pos="0.00931208 -0.00769378 0.000111984" quat="0.643953 0.245771 -0.649317 0.321417" mass="0.005102" diaginertia="4.23686e-07 3.85387e-07 1.37226e-07"/>
+                                  <joint name="palmleft_pinky_DIP" class="palmDIP_joint" range="0 1.3963"/>
+                                  <geom name="palmleft_pinky_DP_visual" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.79216 0.81961 0.93333 1" density="0" mesh="palmleft_DP_visual"/>
+                                  <geom name="palmleft_pinky_DP" type="mesh" group="3" rgba="0.79216 0.81961 0.93333 1" mesh="palmleft_DP"/>
+                                  <geom name="palmleft_pinky_elastomer_visual" quat="0.5 0.5 -0.5 0.5" type="mesh" contype="0" conaffinity="0" group="1" solref="0.06 0.9" rgba="0.2 1 0.2 1" density="0" mesh="palmelastomer"/>
+                                  <geom name="palmleft_pinky_elastomer" quat="0.5 0.5 -0.5 0.5" type="mesh" group="3" rgba="0.2 1 0.2 1" mesh="palmelastomer"/>
+                                </body>
+                              </body>
+                            </body>
+                          </body>
+                        </body>
+                      </body>
+                    </body>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <contact>
+    <exclude body1="base" body2="link1"/>
+    <exclude body1="base" body2="link2"/>
+    <exclude body1="base" body2="link3"/>
+    <exclude body1="link1" body2="link3"/>
+    <exclude body1="link3" body2="link5"/>
+    <exclude body1="link4" body2="link7"/>
+    <exclude body1="link5" body2="link7"/>
+    <exclude body1="palmleft_hand_C_MC" body2="palmleft_thumb_CMC_VL"/>
+    <exclude body1="palmleft_hand_C_MC" body2="palmleft_thumb_MC"/>
+    <exclude body1="palmleft_hand_C_MC" body2="palmleft_index_MCP_VL"/>
+    <exclude body1="palmleft_hand_C_MC" body2="palmleft_index_PP"/>
+    <exclude body1="palmleft_hand_C_MC" body2="palmleft_middle_MCP_VL"/>
+    <exclude body1="palmleft_hand_C_MC" body2="palmleft_middle_PP"/>
+    <exclude body1="palmleft_hand_C_MC" body2="palmleft_ring_MCP_VL"/>
+    <exclude body1="palmleft_hand_C_MC" body2="palmleft_ring_PP"/>
+    <exclude body1="palmleft_hand_C_MC" body2="palmleft_pinky_MC"/>
+    <exclude body1="palmleft_thumb_CMC_VL" body2="palmleft_thumb_MC"/>
+    <exclude body1="palmleft_thumb_MC" body2="palmleft_thumb_MCP_VL"/>
+    <exclude body1="palmleft_thumb_MC" body2="palmleft_thumb_PP"/>
+    <exclude body1="palmleft_thumb_MCP_VL" body2="palmleft_thumb_PP"/>
+    <exclude body1="palmleft_thumb_PP" body2="palmleft_thumb_DP"/>
+    <exclude body1="palmleft_index_MCP_VL" body2="palmleft_index_PP"/>
+    <exclude body1="palmleft_index_PP" body2="palmleft_index_MP"/>
+    <exclude body1="palmleft_index_MP" body2="palmleft_index_DP"/>
+    <exclude body1="palmleft_middle_MCP_VL" body2="palmleft_middle_PP"/>
+    <exclude body1="palmleft_middle_PP" body2="palmleft_middle_MP"/>
+    <exclude body1="palmleft_middle_MP" body2="palmleft_middle_DP"/>
+    <exclude body1="palmleft_ring_MCP_VL" body2="palmleft_ring_PP"/>
+    <exclude body1="palmleft_ring_PP" body2="palmleft_ring_MP"/>
+    <exclude body1="palmleft_ring_MP" body2="palmleft_ring_DP"/>
+    <exclude body1="palmleft_pinky_MC" body2="palmleft_pinky_MCP_VL"/>
+    <exclude body1="palmleft_pinky_MC" body2="palmleft_pinky_PP"/>
+    <exclude body1="palmleft_pinky_MCP_VL" body2="palmleft_pinky_PP"/>
+    <exclude body1="palmleft_pinky_PP" body2="palmleft_pinky_MP"/>
+    <exclude body1="palmleft_pinky_MP" body2="palmleft_pinky_DP"/>
+  </contact>
+
+  <actuator>
+    <general name="actuator1" class="joint1" joint="joint1"/>
+    <general name="actuator2" class="joint2" joint="joint2"/>
+    <general name="actuator3" class="joint1" joint="joint3"/>
+    <general name="actuator4" class="joint2" joint="joint4"/>
+    <general name="actuator5" class="joint1" joint="joint5"/>
+    <general name="actuator6" class="joint2" joint="joint6"/>
+    <general name="actuator7" class="joint3" joint="joint7"/>
+    <general name="palmleft_thumb_CMC_FE_ctrl" joint="palmleft_thumb_CMC_FE" ctrlrange="-0.1745 1.9199" biastype="affine" gainprm="6.95" biasprm="0 -6.95 0.9"/>
+    <general name="palmleft_thumb_CMC_AA_ctrl" joint="palmleft_thumb_CMC_AA" ctrlrange="-0.3491 0.3491" biastype="affine" gainprm="13.2" biasprm="0 -13.2 0.9"/>
+    <general name="palmleft_thumb_MCP_FE_ctrl" joint="palmleft_thumb_MCP_FE" ctrlrange="-0.5236 1.3963" biastype="affine" gainprm="4.76" biasprm="0 -4.76 0.9"/>
+    <general name="palmleft_thumb_MCP_AA_ctrl" joint="palmleft_thumb_MCP_AA" ctrlrange="-0.3491 0.3491" biastype="affine" gainprm="6.62" biasprm="0 -6.62 0.9"/>
+    <general name="palmleft_thumb_IP_ctrl" joint="palmleft_thumb_IP" ctrlrange="0 1.7453" biastype="affine" gainprm="0.9" biasprm="0 -0.9 0.9"/>
+    <general name="palmleft_index_MCP_FE_ctrl" joint="palmleft_index_MCP_FE" ctrlrange="-0.174533 1.5708" biastype="affine" gainprm="4.76" biasprm="0 -4.76 0.9"/>
+    <general name="palmleft_index_MCP_AA_ctrl" joint="palmleft_index_MCP_AA" ctrlrange="-0.3491 0.3491" biastype="affine" gainprm="6.62" biasprm="0 -6.62 0.9"/>
+    <general name="palmleft_index_PIP_ctrl" joint="palmleft_index_PIP" ctrlrange="0 1.7453" biastype="affine" gainprm="0.9" biasprm="0 -0.9 0.9"/>
+    <general name="palmleft_index_DIP_ctrl" joint="palmleft_index_DIP" ctrlrange="0 1.3963" biastype="affine" gainprm="0.9" biasprm="0 -0.9 0.9"/>
+    <general name="palmleft_middle_MCP_FE_ctrl" joint="palmleft_middle_MCP_FE" ctrlrange="-0.174533 1.5708" biastype="affine" gainprm="4.76" biasprm="0 -4.76 0.9"/>
+    <general name="palmleft_middle_MCP_AA_ctrl" joint="palmleft_middle_MCP_AA" ctrlrange="-0.3491 0.3491" biastype="affine" gainprm="6.62" biasprm="0 -6.62 0.9"/>
+    <general name="palmleft_middle_PIP_ctrl" joint="palmleft_middle_PIP" ctrlrange="0 1.7453" biastype="affine" gainprm="0.9" biasprm="0 -0.9 0.9"/>
+    <general name="palmleft_middle_DIP_ctrl" joint="palmleft_middle_DIP" ctrlrange="0 1.3963" biastype="affine" gainprm="0.9" biasprm="0 -0.9 0.9"/>
+    <general name="palmleft_ring_MCP_FE_ctrl" joint="palmleft_ring_MCP_FE" ctrlrange="-0.174533 1.5708" biastype="affine" gainprm="4.76" biasprm="0 -4.76 0.9"/>
+    <general name="palmleft_ring_MCP_AA_ctrl" joint="palmleft_ring_MCP_AA" ctrlrange="-0.3491 0.3491" biastype="affine" gainprm="6.62" biasprm="0 -6.62 0.9"/>
+    <general name="palmleft_ring_PIP_ctrl" joint="palmleft_ring_PIP" ctrlrange="0 1.7453" biastype="affine" gainprm="0.9" biasprm="0 -0.9 0.9"/>
+    <general name="palmleft_ring_DIP_ctrl" joint="palmleft_ring_DIP" ctrlrange="0 1.3963" biastype="affine" gainprm="0.9" biasprm="0 -0.9 0.9"/>
+    <general name="palmleft_pinky_CMC_ctrl" joint="palmleft_pinky_CMC" ctrlrange="0 0.2618" biastype="affine" gainprm="1.38" biasprm="0 -1.38 0.9"/>
+    <general name="palmleft_pinky_MCP_FE_ctrl" joint="palmleft_pinky_MCP_FE" ctrlrange="-0.174533 1.5708" biastype="affine" gainprm="4.76" biasprm="0 -4.76 0.9"/>
+    <general name="palmleft_pinky_MCP_AA_ctrl" joint="palmleft_pinky_MCP_AA" ctrlrange="-0.3491 0.3491" biastype="affine" gainprm="6.62" biasprm="0 -6.62 0.9"/>
+    <general name="palmleft_pinky_PIP_ctrl" joint="palmleft_pinky_PIP" ctrlrange="0 1.7453" biastype="affine" gainprm="0.9" biasprm="0 -0.9 0.9"/>
+    <general name="palmleft_pinky_DIP_ctrl" joint="palmleft_pinky_DIP" ctrlrange="0 1.3963" biastype="affine" gainprm="0.9" biasprm="0 -0.9 0.9"/>
+  </actuator>
+
+  <keyframe>
+    <key name="home" qpos="0 0.785398 0 -1.5708 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0" ctrl="0 0.785398 0 -1.5708 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"/>
+  </keyframe>
+</mujoco>
